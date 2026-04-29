@@ -511,7 +511,8 @@
     <script>
     // ─── Transcription Engine ───────────────────────────────────────────────────
     const VOWEL_MAP = { 'ə': 'ë', 'ɛ': 'è', 'ɔ': 'ò' };
-    const CONSONANT_MAP = { 'ŋ': 'ṅ' };
+    const CONSONANT_MAP = { 'ŋ': 'ṅ', 'ɲ': 'ny' };
+    const DEVOICING_MAP = { 'b': 'p', 'd': 't', 'g': 'k' };
     const TONAL_DIACRITICS = ['\u0300','\u0301','\u0304','\u030C','\u0302'];
     const TONE_NAMES = {
         '\u0300': 'low tone (◌̀)',
@@ -553,9 +554,17 @@
         }
         step3 = step3.normalize('NFC');
         if (tonesRemoved.size > 0) rules.push(`Removed tones: ${[...tonesRemoved].join(', ')}`);
+
+        // Step 4: word-final devoicing
+        const lastChar = step3[step3.length - 1];
+        let step4 = step3;
+        if (DEVOICING_MAP[lastChar]) {
+            step4 = step3.slice(0, -1) + DEVOICING_MAP[lastChar];
+            rules.push(`Devoicing: ${lastChar} → ${DEVOICING_MAP[lastChar]} (word-final)`);
+        }
         if (rules.length === 0) rules.push('No changes needed');
 
-        return { essono: word.trim(), pichon: step3, rules };
+        return { essono: word.trim(), pichon: step4, rules };
     }
 
     function transcribeMany(text) {
