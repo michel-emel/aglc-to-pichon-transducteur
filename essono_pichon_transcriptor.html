@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     <link rel="stylesheet" href="styles.css">
+    <title>Ewondo Transcriptor: Essono → Pichon</title>
+    
+</head>
+<body>
+    <div class="container"> 
+        <div class="header">
+            <h1>Ewondo Transcriptor</h1>
+            <p>Convert from Essono system to Pichon system</p>
+        </div>
+
+        <div class="input-section">
+            <div class="input-group">
+                <label for="wordInput">Enter Ewondo words (Essono system):</label>
+                <input 
+                    type="text" 
+                    id="wordInput" 
+                    class="input-field" 
+                    placeholder="Enter words separated by commas (e.g., mbɔ̀ŋ, ɛɛ́ndə̀, ɔ̀ɔ̀ɔ̂)"
+                    autocomplete="off"
+                >
+                <div class="help-text">
+                    <strong>Instructions:</strong> 
+                    Enter one or more Ewondo words in the Essono system. 
+                    For multiple words, separate them with commas. 
+                    The transcriptor will convert each word to the Pichon system and show the rules applied.
+                </div>
+            </div>
+            <button id="transcribeBtn" class="transcribe-btn">Transcribe Words</button>
+        </div>
+
+        <div id="resultsSection" class="results-section">
+            <h2 class="results-title">Transcription Results</h2>
+            <div id="resultsContent"></div>
+        </div>
+    </div>
+
+    <script>
+        class EwondoTranscriptorUI {
+            constructor() {
+                this.wordInput = document.getElementById('wordInput');
+                this.transcribeBtn = document.getElementById('transcribeBtn');
+                this.resultsSection = document.getElementById('resultsSection');
+                this.resultsContent = document.getElementById('resultsContent');
+                
+                this.initEventListeners();
+            }
+
+            initEventListeners() {
+                this.transcribeBtn.addEventListener('click', () => this.transcribeWords());
+                this.wordInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.transcribeWords();
+                    }
+                });
+            }
+
+            async transcribeWords() {
+                const inputText = this.wordInput.value.trim();
+                
+                if (!inputText) {
+                    this.showError('Please enter at least one word to transcribe.');
+                    return;
+                }
+
+                this.showLoading();
+                
+                try {
+                    // Simulate calling Python script
+                    const results = await this.callPythonScript(inputText);
+                    this.displayResults(results);
+                } catch (error) {
+                    this.showError('Error during transcription: ' + error.message);
+                }
+            }
+
+            async callPythonScript(inputText) {
+                // Since we can't actually call Python from the browser,
+                // we'll implement the transcription logic in JavaScript
+                // This simulates the Python script's functionality
+                
+                return this.simulateTranscription(inputText);
+            }
+
+            simulateTranscription(inputText) {
+                const words = inputText.split(',').map(w => w.trim()).filter(w => w);
+                const results = [];
+
+                for (const word of words) {
+                    const result = this.transcribeWord(word);
+                    results.push(result);
+                }
+
+                return results;
+            }
+
+            transcribeWord(word) {
+    if (!word.trim()) {
+        return {
+            essono: word,
+            pichon: word,
+            rules: []
+        };
+    }
+
+    const appliedRules = [];
+    let currentWord = word.trim();
+
+    // Step 1: Convert consonants
+    if (currentWord.includes('ŋ')) {
+        currentWord = currentWord.replace(/ŋ/g, 'ṅ');
+        appliedRules.push('Consonant: ŋ → ṅ');
+    }
+
+    // Step 2: Convert vowels (character by character)
+    const vowelMap = {
+        'ə': 'ë',
+        'ɛ': 'è',
+        'ɔ': 'ò'
+    };
+
+    // Normalize first to handle composed characters
+    const normalizedWord = currentWord.normalize('NFD');
+    let step2Word = '';
+    const vowelChanges = new Set();
+
+    for (const char of normalizedWord) {
+        if (vowelMap[char]) {
+            step2Word += vowelMap[char];
+            vowelChanges.add(`${char} → ${vowelMap[char]}`);
+        } else {
+            step2Word += char;
+        }
+    }
+
+    // Add vowel rules to applied rules
+    vowelChanges.forEach(change => {
+        appliedRules.push(`Vowel: ${change}`);
+    });
+
+    // Step 3: Remove tonal diacritics
+    const tonalDiacritics = [
+        '\u0300', // ◌̀ low tone
+        '\u0301', // ◌́ high tone  
+        '\u0304', // ◌̄ mid tone
+        '\u030C', // ◌̌ rising tone
+        '\u0302'  // ◌̂ falling tone
+    ];
+
+    const toneNames = {
+        '\u0300': 'low tone (◌̀)',
+        '\u0301': 'high tone (◌́)',
+        '\u0304': 'mid tone (◌̄)',
+        '\u030C': 'rising tone (◌̌)',
+        '\u0302': 'falling tone (◌̂)'
+    };
+
+    // Process the already normalized string from step 2
+    const tonesRemoved = new Set();
+    let step3Word = '';
+
+    for (const char of step2Word) {
+        if (tonalDiacritics.includes(char)) {
+            tonesRemoved.add(toneNames[char]);
+            // Skip adding this character (remove the tone)
+        } else {
+            step3Word += char;
+        }
+    }
+
+    // Normalize back to composed form
+    step3Word = step3Word.normalize('NFC');
+
+    if (tonesRemoved.size > 0) {
+        appliedRules.push(`Removed tones: ${Array.from(tonesRemoved).join(', ')}`);
+    }
+
+    if (appliedRules.length === 0) {
+        appliedRules.push('No changes needed');
+    }
+
+    return {
+        essono: word.trim(),
+        pichon: step3Word,
+        rules: appliedRules
+    };
+}
+
+            showLoading() {
+                this.transcribeBtn.disabled = true;
+                this.transcribeBtn.textContent = 'Transcribing...';
+                this.resultsContent.innerHTML = '<div class="loading">Processing transcription...</div>';
+                this.resultsSection.classList.add('show');
+            }
+
+            displayResults(results) {
+                this.transcribeBtn.disabled = false;
+                this.transcribeBtn.textContent = 'Transcribe Words';
+
+                if (!results || results.length === 0) {
+                    this.showError('No results to display.');
+                    return;
+                }
+
+                let tableHTML = `
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th>Essono</th>
+                                <th>Pichon</th>
+                                <th>Rules Applied</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                for (const result of results) {
+                    const rulesHTML = result.rules.map(rule => 
+                        `<span class="rule-item">${rule}</span>`
+                    ).join(' ');
+
+                    tableHTML += `
+                        <tr>
+                            <td><span class="essono-word">${result.essono}</span></td>
+                            <td><span class="pichon-word">${result.pichon}</span></td>
+                            <td><div class="rules-cell">${rulesHTML}</div></td>
+                        </tr>
+                    `;
+                }
+
+                tableHTML += `
+                        </tbody>
+                    </table>
+                `;
+
+                this.resultsContent.innerHTML = tableHTML;
+                this.resultsSection.classList.add('show');
+            }
+
+            showError(message) {
+                this.transcribeBtn.disabled = false;
+                this.transcribeBtn.textContent = 'Transcribe Words';
+                this.resultsContent.innerHTML = `<div class="error">${message}</div>`;
+                this.resultsSection.classList.add('show');
+            }
+        }
+
+        // Initialize the application when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new EwondoTranscriptorUI();
+        });
+    </script>
+</body>
+</html>
