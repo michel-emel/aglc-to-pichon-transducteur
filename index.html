@@ -511,7 +511,7 @@
     <script>
     // ─── Transcription Engine ───────────────────────────────────────────────────
     const VOWEL_MAP = { 'ə': 'ë', 'ɛ': 'è', 'ɔ': 'ò' };
-    const CONSONANT_MAP = { 'ŋ': 'ṅ', 'ɲ': 'ny' };
+    const CONSONANT_MAP = { 'ŋ': 'ǹ', 'ɲ': 'ny',"ṅ":'ǹ' };
     const DEVOICING_MAP = { 'b': 'p', 'd': 't', 'g': 'k' };
     const TONAL_DIACRITICS = ['\u0300','\u0301','\u0304','\u030C','\u0302'];
     const TONE_NAMES = {
@@ -527,33 +527,33 @@
         const rules = [];
         let cur = word.trim();
 
-        // Step 1: consonants
-        for (const [from, to] of Object.entries(CONSONANT_MAP)) {
-            if (cur.includes(from)) {
-                cur = cur.replaceAll(from, to);
-                rules.push(`Consonant: ${from} → ${to}`);
-            }
-        }
-
-        // Step 2: vowels (on NFD)
+        // Step 1: vowels (on NFD)
         const nfd = cur.normalize('NFD');
-        let step2 = '';
+        let step1 = '';
         const vowelChanges = new Set();
         for (const ch of nfd) {
-            if (VOWEL_MAP[ch]) { step2 += VOWEL_MAP[ch]; vowelChanges.add(`${ch} → ${VOWEL_MAP[ch]}`); }
-            else step2 += ch;
+            if (VOWEL_MAP[ch]) { step1 += VOWEL_MAP[ch]; vowelChanges.add(`${ch} → ${VOWEL_MAP[ch]}`); }
+            else step1 += ch;
         }
         vowelChanges.forEach(c => rules.push(`Vowel: ${c}`));
 
-        // Step 3: strip tones
+        // Step 2: strip tones
         const tonesRemoved = new Set();
-        let step3 = '';
-        for (const ch of step2) {
+        let step2 = '';
+        for (const ch of step1) {
             if (TONAL_DIACRITICS.includes(ch)) tonesRemoved.add(TONE_NAMES[ch]);
-            else step3 += ch;
+            else step2 += ch;
         }
-        step3 = step3.normalize('NFC');
+        let step3 = step2.normalize('NFC');
         if (tonesRemoved.size > 0) rules.push(`Removed tones: ${[...tonesRemoved].join(', ')}`);
+
+        // Step 3: consonants
+        for (const [from, to] of Object.entries(CONSONANT_MAP)) {
+            if (step3.includes(from)) {
+                step3 = step3.replaceAll(from, to);
+                rules.push(`Consonant: ${from} → ${to}`);
+            }
+        }
 
         // Step 4: word-final devoicing
         const lastChar = step3[step3.length - 1];
